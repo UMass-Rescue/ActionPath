@@ -1,143 +1,119 @@
-import AudioRecorderPlayer, {
-    AVEncoderAudioQualityIOSType,
-    AVEncodingOption,
-    AudioEncoderAndroidType,
-    AudioSet,
-    AudioSourceAndroidType,
-} from 'react-native-audio-recorder-player';
 import React, { Component } from "react";
 import {
     View,
     TouchableOpacity,
     Text,
     StyleSheet,
+    Button,
+    ScrollView,
 } from "react-native";
 import { HEIGHT, WIDTH } from "../constants/constants";
 import { Divider } from 'react-native-paper';
+import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system";
+
 
 const questionList = ['Question 1', 'Question 2', 'Question 3'];
 
-export default class RecordingScreen extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            isPaused: false,
-            isLoggingIn: false,
-            recordSecs: 0,
-            recordTime: '00:00:00',
-            currentPositionSec: 0,
-            currentDurationSec: 0,
-            playTime: '00:00:00',
-            duration: '00:00:00',
+export default function RecordingScreen() {
+    const [recording, setRecording] = React.useState();
+    const [recordings, setRecordings] = React.useState([]);
+    const [message, setMessage] = React.useState("");
+
+    async function startRecording() {
+        try {
+            const permission = await Audio.requestPermissionsAsync();
+
+            if (permission.status === "granted") {
+                await Audio.setAudioModeAsync({
+                    allowsRecordingIOS: true,
+                    playsInSilentModeIOS: true
+                });
+
+                const { recording } = await Audio.Recording.createAsync(
+                    Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY, 
+                );
+
+                setRecording(recording);
+            } else {
+                setMessage("Please grant permission to app to access microphone");
+            }
+        } catch (err) {
+            console.error('Failed to start recording', err);
         }
-        this.audioRecorderPlayer = new AudioRecorderPlayer();
-        this.audioRecorderPlayer.setSubscriptionDuration(0.09); // optional. Default is 0.1
     }
 
-    onStartRecord = async () => {
+    async function stopRecording() {
+        setRecording(undefined);
+        await recording.stopAndUnloadAsync();
+        const uri = recording.getURI();
+        console.log(uri);
 
-        const path = 'hello.m4a';
-        const audioSet = {
-            AudioEncoderAndroid: AudioEncoderAndroidType.AAC,
-            AudioSourceAndroid: AudioSourceAndroidType.MIC,
-            AVEncoderAudioQualityKeyIOS: AVEncoderAudioQualityIOSType.high,
-            AVNumberOfChannelsKeyIOS: 2,
-            AVFormatIDKeyIOS: AVEncodingOption.aac,
-        };
-        console.log('audioSet', audioSet);
-        const uri = await this.audioRecorderPlayer.startRecorder(path, audioSet);
-        this.audioRecorderPlayer.addRecordBackListener((e) => {
-            this.setState({
-                recordSecs: e.current_position,
-                recordTime: this.audioRecorderPlayer.mmssss(
-                    Math.floor(e.current_position),
-                ),
-            });
+        let updatedRecordings = [...recordings];
+        const { sound, status } = await recording.createNewLoadedSoundAsync();
+        updatedRecordings.push({
+            sound: sound,
+            duration: getDurationFormatted(status.durationMillis),
+            file: recording.getURI()
         });
-        console.log(`uri: ${uri}`);
-    };
 
-    onStopRecord = async () => {
-        const result = await this.audioRecorderPlayer.stopRecorder();
-        this.audioRecorderPlayer.removeRecordBackListener();
-        this.setState({
-            recordSecs: 0,
+        setRecordings(updatedRecordings);
+    }
+
+    function getDurationFormatted(millis) {
+        const minutes = millis / 1000 / 60;
+        const minutesDisplay = Math.floor(minutes);
+        const seconds = Math.round((minutes - minutesDisplay) * 60);
+        const secondsDisplay = seconds < 10 ? `0${seconds}` : seconds;
+        return `${minutesDisplay}:${secondsDisplay}`;
+    }
+
+    function getRecordingLines() {
+        return recordings.map((recordingLine, index) => {
+            return (
+                <View key={index} style={styles.row}>
+                    <Text style={styles.fill}>Recording {index + 1} - {recordingLine.duration}</Text>
+                    <Button style={styles.button} onPress={() => recordingLine.sound.replayAsync()} title="Play"></Button>
+                </View>
+            );
         });
-        console.log(result);
-    };
+    }
 
+    return (
+        <ScrollView>
 
-    onStartPlay = async (e) => {
-        console.log('onStartPlay');
-        const path = 'hello.m4a'
-        const msg = await this.audioRecorderPlayer.startPlayer(path);
-        this.audioRecorderPlayer.setVolume(1.0);
-        console.log(msg);
-        this.audioRecorderPlayer.addPlayBackListener((e) => {
-            if (e.current_position === e.duration) {
-                console.log('finished');
-                this.audioRecorderPlayer.stopPlayer();
-            }
-            this.setState({
-                currentPositionSec: e.current_position,
-                currentDurationSec: e.duration,
-                playTime: this.audioRecorderPlayer.mmssss(
-                    Math.floor(e.current_position),
-                ),
-                duration: this.audioRecorderPlayer.mmssss(Math.floor(e.duration)),
-            });
-        });
-    };
+            <View style={styles.container}>
+                <Text>{message}</Text>
 
-    onPausePlay = async (e) => {
-        await this.audioRecorderPlayer.pausePlayer();
-    };
+                <TouchableOpacity onPress={startRecording}>
+                    <View style={styles.RecordButtonView}>
+                        <Text style={styles.RecordButtonText}>
+                            Start
+                        </Text>
+                    </View>
+                </TouchableOpacity>
 
-    onStopPlay = async (e) => {
-        console.log('onStopPlay');
-        this.audioRecorderPlayer.stopPlayer();
-        this.audioRecorderPlayer.removePlayBackListener();
-    };
+                <TouchableOpacity onPress={stopRecording}>
+                    <View style={styles.RecordButtonView}>
+                        <Text style={styles.RecordButtonText}>
+                            Stop
+                        </Text>
+                    </View>
+                </TouchableOpacity>
 
-    render() {
-        return (
-            <View>
-                <View style={styles.RecordingTimerView}>
-                    <Text style={styles.RecordingTimerText}>
-                        Recording time: {this.state.recordTime}
-                    </Text>
+                <TouchableOpacity onPress={() => this.props.navigation.navigate('RecordingListeningScreen', { recordings: recordings })}>
+                    <View style={[styles.RecordButtonView, styles.UploadButtonView]}>
+                        <Text style={styles.RecordButtonText}>
+                            Save Recording
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+
+                <View style={{marginTop: 0.08 * HEIGHT}}>
+                    {getRecordingLines()}
                 </View>
 
-                <TouchableOpacity onPress={() => this.onStartRecord()}>
-                    <View style={styles.RecordButtonView}>
-                        <Text style={styles.RecordButtonText}>
-                            Start Recording
-                        </Text>
-                    </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity>
-                    <View style={styles.RecordButtonView}>
-                        <Text style={styles.RecordButtonText}>
-                            {this.state.isPaused ? (
-                                `Resume Recording`
-                            ) : (
-                                `Pause Recording`
-                            )}
-
-                        </Text>
-                    </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => this.onStopRecord()}>
-                    <View style={styles.RecordButtonView}>
-                        <Text style={styles.RecordButtonText}>
-                            Stop Recording
-                        </Text>
-                    </View>
-                </TouchableOpacity>
-
-                <Divider style={{ height: 7, marginTop: 0.02 * HEIGHT }} />
+                <Divider style={{ height: 7, marginTop: 0.04 * HEIGHT }} />
 
                 <View style={[styles.QuestionsHeadingView, { marginTop: 0.01 * HEIGHT }]}>
                     <Text style={styles.QuestionsHeadingText}>Questions</Text>
@@ -153,18 +129,12 @@ export default class RecordingScreen extends Component {
                     })}
                 </View>
 
-                <TouchableOpacity onPress={() => this.props.navigation.navigate('RecordingListeningScreen')}>
-                    <View style={[styles.RecordButtonView, styles.UploadButtonView]}>
-                        <Text style={styles.RecordButtonText}>
-                            Save Recording
-                        </Text>
-                    </View>
-                </TouchableOpacity>
-
             </View>
-        )
-    }
+
+        </ScrollView>
+    );
 }
+
 
 const styles = StyleSheet.create({
     RecordButtonView: {

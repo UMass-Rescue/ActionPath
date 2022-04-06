@@ -1,4 +1,4 @@
-import React, {Component} from "react";
+import React, { Component } from "react";
 import {
     View,
     TouchableOpacity,
@@ -9,105 +9,110 @@ import { HEIGHT, WIDTH } from "../constants/constants";
 import { Divider } from 'react-native-paper';
 
 const getTranscriptionObj = {
-	transcription: [
-		{
-			question: "Question1",
-			answer: "Answer1",
-		},
-		{
-			question2: "Question2",
-			answer: "Answer2",
-		}
-	]
-}
-
-
-export default class RecordingListeningScreen extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            isPaused: false,
-            isLoggingIn: false,
-            recordSecs: 0,
-            recordTime: '00:00:00',
-            currentPositionSec: 0,
-            currentDurationSec: 0,
-            playTime: '00:00:00',
-            duration: '00:00:00',
-            submissionSuccessful: false,
+    transcription: [
+        {
+            question: "Question1",
+            answer: "Answer1",
+        },
+        {
+            question2: "Question2",
+            answer: "Answer2",
         }
-    }
-
-    render() {
-        return (
-            <View>
-
-                <View style={styles.recordingTimerView}>
-                    <Text style={styles.recordingTimerText}>
-                        Listen recording
-                    </Text>
-                </View>
-
-                <View style={styles.recordingTimerView}>
-                    <Text style={styles.recordingTimerText}>
-                        Listening time: {this.state.playTime} / {this.state.duration}
-                    </Text>
-                </View>
-                
-                <TouchableOpacity>
-                    <View style={styles.RecordButtonView}>
-                        <Text style={styles.RecordButtonText}>
-                            Start
-                        </Text>
-                    </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity>
-                    <View style={styles.RecordButtonView}>
-                        <Text style={styles.RecordButtonText}>
-                            Pause
-                        </Text>
-                    </View>
-                </TouchableOpacity>
-
-                <Divider style={{height: 7, marginTop: 0.04 * HEIGHT}}/>
-
-                <TouchableOpacity onPress={() => this.props.navigation.navigate('TranscriptionScreen')}>
-                    <View style={[styles.RecordButtonView, styles.UploadButtonView, {marginTop: 0.08 * HEIGHT}]}>
-                        <Text style={styles.RecordButtonText}>
-                            Transcribe
-                        </Text>
-                    </View>
-                </TouchableOpacity>
-
-                <View>
-                    {this.state.submissionSuccessful ? (
-                        <View style={styles.recordingTimerView}>
-                            <Text style={styles.confirmationText}>Recording submitted for transcription !</Text>
-                        </View>
-                    ) : null}
-                </View>
-
-                {/* <TouchableOpacity onPress={() => this.props.navigation.navigate('RecordingScreen')}>
-                    <View style={[styles.RecordButtonView, styles.UploadButtonView, {backgroundColor: '#F5CE62', marginTop: 0.12 * HEIGHT}]}>
-                        <Text style={styles.RecordButtonText}>
-                            Previous
-                        </Text>
-                    </View>
-                </TouchableOpacity> */}
-
-                {/* <TouchableOpacity onPress={() => this.props.navigation.navigate('TranscriptionScreen')}>
-                    <View style={[styles.RecordButtonView, styles.UploadButtonView, {backgroundColor: '#F5CE62'}]}>
-                        <Text style={styles.RecordButtonText}>
-                            Next
-                        </Text>
-                    </View>
-                </TouchableOpacity> */}
-
-            </View>
-        )
-    }
+    ]
 }
+
+export default function RecordingListeningScreen() {
+    const [recordings, setRecordings] = React.useState(this.props.navigation.getParam('recordings'));
+
+    function getRecordingLines() {
+        return recordings.map((recordingLine, index) => {
+            return (
+                <View key={index} style={styles.row}>
+                    <Text style={styles.fill}>Recording {index + 1} - {recordingLine.duration}</Text>
+                    <Button style={styles.button} onPress={() => recordingLine.sound.replayAsync()} title="Play"></Button>
+                </View>
+            );
+        });
+    }
+
+    return (
+        <View>
+            {getRecordingLines()}
+        </View>
+    );
+}
+
+
+// export default class RecordingListeningScreen extends Component {
+//     constructor(props) {
+//         super(props);
+//         this.state = {
+//             isPaused: false,
+//             isLoggingIn: false,
+//             recordSecs: 0,
+//             recordTime: '00:00:00',
+//             currentPositionSec: 0,
+//             currentDurationSec: 0,
+//             playTime: '00:00:00',
+//             duration: '00:00:00',
+//             submissionSuccessful: false,
+//         }
+//     }
+
+//     render() {
+//         return (
+//             <View>
+
+//                 <View style={styles.recordingTimerView}>
+//                     <Text style={styles.recordingTimerText}>
+//                         Listen recording
+//                     </Text>
+//                 </View>
+
+//                 <View style={styles.recordingTimerView}>
+//                     <Text style={styles.recordingTimerText}>
+//                         Listening time: {this.state.playTime} / {this.state.duration}
+//                     </Text>
+//                 </View>
+
+//                 <TouchableOpacity>
+//                     <View style={styles.RecordButtonView}>
+//                         <Text style={styles.RecordButtonText}>
+//                             Start
+//                         </Text>
+//                     </View>
+//                 </TouchableOpacity>
+
+//                 <TouchableOpacity>
+//                     <View style={styles.RecordButtonView}>
+//                         <Text style={styles.RecordButtonText}>
+//                             Pause
+//                         </Text>
+//                     </View>
+//                 </TouchableOpacity>
+
+//                 <Divider style={{height: 7, marginTop: 0.04 * HEIGHT}}/>
+
+//                 <TouchableOpacity onPress={() => this.props.navigation.navigate('TranscriptionScreen')}>
+//                     <View style={[styles.RecordButtonView, styles.UploadButtonView, {marginTop: 0.08 * HEIGHT}]}>
+//                         <Text style={styles.RecordButtonText}>
+//                             Transcribe
+//                         </Text>
+//                     </View>
+//                 </TouchableOpacity>
+
+//                 <View>
+//                     {this.state.submissionSuccessful ? (
+//                         <View style={styles.recordingTimerView}>
+//                             <Text style={styles.confirmationText}>Recording submitted for transcription !</Text>
+//                         </View>
+//                     ) : null}
+//                 </View>
+
+//             </View>
+//         )
+//     }
+// }
 
 const styles = StyleSheet.create({
     RecordButtonView: {
